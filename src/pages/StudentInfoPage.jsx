@@ -60,6 +60,9 @@ function StudentInfoPage() {
         // Store student info and selected assessment type in sessionStorage for use in quiz and results
         sessionStorage.setItem("qh_student_info", JSON.stringify(formData));
         sessionStorage.setItem("qh_assessment_type", formData.assessmentType);
+        const startTime = Date.now();
+        const timeLimitMs = 5 * 60 * 1000; // 5 minutes
+        sessionStorage.setItem("qh_quiz_end_time", (startTime + timeLimitMs).toString());
         navigate("/quiz");
     };
 

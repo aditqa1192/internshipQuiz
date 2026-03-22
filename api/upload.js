@@ -24,7 +24,15 @@ export default async function handler(req, res) {
         // Create container if it doesn't exist (optional, but good practice if SAS allows)
         // Note: SAS tokens usually have limited permissions, so we assume container exists.
 
-        const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+        // Append date (YYYY-MM-DD) as folder prefix
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const dateFolder = `${year}-${month}-${day}`;
+        const fullFileName = `${dateFolder}/${fileName}`;
+
+        const blockBlobClient = containerClient.getBlockBlobClient(fullFileName);
 
         // Convert base64 to buffer
         const buffer = Buffer.from(pdfBase64, 'base64');

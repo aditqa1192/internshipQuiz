@@ -27,6 +27,7 @@ import questionsGenAI from "../data/questions_old";
 import { generatePDF } from "../utils/generatePDF";
 
 const STORAGE_KEY = "qh_quiz_submitted";
+const TIME_LIMIT_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 function QuizPage() {
     const navigate = useNavigate();
@@ -35,6 +36,8 @@ function QuizPage() {
     const [isUploading, setIsUploading] = useState(false);
     const [questions, setQuestions] = useState([]);
     const [assessmentType, setAssessmentType] = useState("cybersecurity");
+    const [remainingTime, setRemainingTime] = useState(5 * 60);
+    const [timerExpired, setTimerExpired] = useState(false);
 
     useEffect(() => {
         // Check if already submitted
@@ -55,7 +58,128 @@ function QuizPage() {
         const selectedType = storedType === "gen-ai" ? "gen-ai" : "cybersecurity";
         setAssessmentType(selectedType);
         setQuestions(selectedType === "gen-ai" ? questionsGenAI : questionsCyberSecurity);
+
+        const now = Date.now();
+        const storedEndTime = parseInt(sessionStorage.getItem("qh_quiz_end_time"), 10);
+        let quizEndTime = storedEndTime;
+
+        if (!storedEndTime || Number.isNaN(storedEndTime) || storedEndTime <= now) {
+            quizEndTime = now + TIME_LIMIT_MS;
+            sessionStorage.setItem("qh_quiz_end_time", quizEndTime.toString());
+        }
+
+        const secondsLeft = Math.max(0, Math.ceil((quizEndTime - now) / 1000));
+        setRemainingTime(secondsLeft);
+
+        if (quizEndTime <= now) {
+            setTimerExpired(true);
+        }
     }, [navigate]);
+
+    useEffect(() => {
+        if (!questions.length) return;
+
+        const intervalId = setInterval(() => {
+            const endTime = parseInt(sessionStorage.getItem("qh_quiz_end_time"), 10);
+            const now = Date.now();
+            if (!endTime || Number.isNaN(endTime)) {
+                return;
+            }
+
+            const secondsLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
+            setRemainingTime(secondsLeft);
+
+            if (secondsLeft <= 0) {
+                setTimerExpired(true);
+            }
+        }, 1000);
+
+        return () => clearInterval(intervalId);
+    }, [questions]);
+
+    useEffect(() => {
+        if (!timerExpired) return;
+        handleAutoSubmit();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [timerExpired]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60)
+            .toString()
+            .padStart(2, "0");
+        const secs = (seconds % 60).toString().padStart(2, "0");
+        return `${mins}:${secs}`;
+    };
+
+    const submitQuiz = async () => {
+        if (isUploading) return;
+
+        setIsUploading(true);
+        try {
+            const results = questions.map((q) => {
+                const studentAnswer = answers[q.id] || [];
+                const isCorrect =
+                    studentAnswer.length === q.correctAnswers.length &&
+                    studentAnswer.every((a) => q.correctAnswers.includes(a));
+                return {
+                    ...q,
+                    studentAnswer,
+                    isCorrect,
+                };
+            });
+
+            const score = results.filter((r) => r.isCorrect).length;
+            const studentInfo = JSON.parse(sessionStorage.getItem("qh_student_info") || "{}");
+            const submittedAt = new Date().toISOString();
+            const quizResults = {
+                studentInfo,
+                assessmentType,
+                results,
+                score,
+                totalQuestions: questions.length,
+                submittedAt,
+            };
+
+            const pdfData = await generatePDF({ ...quizResults, returnOutput: true });
+            const base64String = btoa(
+                new Uint8Array(pdfData).reduce((data, byte) => data + String.fromCharCode(byte), "")
+            );
+            const fileName = `QuanHack_Assessment_${studentInfo.name.replace(/\s+/g, "_")}_${studentInfo.collegeName.replace(/\s+/g, "_")}.pdf`;
+
+            const response = await fetch("/api/upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fileName, pdfBase64: base64String }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Upload failed");
+            }
+
+            sessionStorage.setItem("qh_quiz_results", JSON.stringify(quizResults));
+            localStorage.setItem(STORAGE_KEY, "true");
+            sessionStorage.removeItem("qh_quiz_end_time");
+            navigate("/result");
+        } catch (error) {
+            console.error("Submission error:", error);
+            alert("Submission failed. Please try again. Error: " + error.message);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleConfirmSubmit = () => {
+        setConfirmOpen(false);
+        submitQuiz();
+    };
+
+    const handleAutoSubmit = async () => {
+        if (localStorage.getItem(STORAGE_KEY) === "true") return;
+        setConfirmOpen(false);
+        await submitQuiz();
+    };
+
 
     const handleSingleAnswer = (questionId, optionIndex) => {
         setAnswers((prev) => ({
@@ -86,82 +210,6 @@ function QuizPage() {
         setConfirmOpen(true);
     };
 
-    const handleConfirmSubmit = async () => {
-        setConfirmOpen(false);
-        setIsUploading(true);
-
-        try {
-            // Calculate results
-            const results = questions.map((q) => {
-                const studentAnswer = answers[q.id] || [];
-                const isCorrect =
-                    studentAnswer.length === q.correctAnswers.length &&
-                    studentAnswer.every((a) => q.correctAnswers.includes(a));
-                return {
-                    ...q,
-                    studentAnswer,
-                    isCorrect,
-                };
-            });
-
-            const score = results.filter((r) => r.isCorrect).length;
-            const studentInfo = JSON.parse(
-                sessionStorage.getItem("qh_student_info") || "{}"
-            );
-
-            const submittedAt = new Date().toISOString();
-            const quizResults = {
-                studentInfo,
-                assessmentType,
-                results,
-                score,
-                totalQuestions,
-                submittedAt,
-            };
-
-            // 1. Generate PDF data for upload
-            const pdfData = await generatePDF({ ...quizResults, returnOutput: true });
-
-            // Convert ArrayBuffer to Base64 manually for the API
-            const base64String = btoa(
-                new Uint8Array(pdfData).reduce(
-                    (data, byte) => data + String.fromCharCode(byte),
-                    ''
-                )
-            );
-
-            const fileName = `QuanHack_Assessment_${studentInfo.name.replace(/\s+/g, "_")}_${studentInfo.collegeName.replace(/\s+/g, "_")}.pdf`;
-
-            // 2. Upload to Azure via API
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileName,
-                    pdfBase64: base64String
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Upload failed');
-            }
-
-            // 3. Store results in sessionStorage for the results page
-            sessionStorage.setItem("qh_quiz_results", JSON.stringify(quizResults));
-
-            // 4. Mark as submitted and navigate
-            localStorage.setItem(STORAGE_KEY, "true");
-            navigate("/result");
-        } catch (error) {
-            console.error("Submission error:", error);
-            alert("Submission failed. Please try again. Error: " + error.message);
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-
     return (
         <Layout>
             {/* Progress Bar */}
@@ -182,6 +230,8 @@ function QuizPage() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 1,
                         mb: 1,
                     }}
                 >
@@ -190,6 +240,13 @@ function QuizPage() {
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                         {answeredCount} / {totalQuestions} answered
+                    </Typography>
+                    <Typography
+                        variant="body2"
+                        color={remainingTime <= 30 ? "error.main" : "text.secondary"}
+                        fontWeight={600}
+                    >
+                        Time left: {formatTime(remainingTime)}
                     </Typography>
                 </Box>
                 <LinearProgress
