@@ -44,6 +44,10 @@ export function generatePDF(quizData) {
     doc.text(`Email: ${studentInfo.email}`, margin, yPos);
     yPos += 6;
     doc.text(`College: ${studentInfo.collegeName}`, margin, yPos);
+    yPos += 6;
+    doc.text(`College ID: ${studentInfo.collegeId}`, margin, yPos);
+    yPos += 6;
+    doc.text(`Department: ${studentInfo.department}`, margin, yPos);
 
     // --- Score Summary ---
     yPos += 12;

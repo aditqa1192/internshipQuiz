@@ -24,6 +24,8 @@ function StudentInfoPage() {
         name: "",
         email: "",
         collegeName: "",
+        collegeId: "",
+        department: "",
         assessmentType: "gen-ai",
     });
     const [errors, setErrors] = useState({});
@@ -46,6 +48,10 @@ function StudentInfoPage() {
         }
         if (!formData.collegeName.trim())
             newErrors.collegeName = "College name is required";
+        if (!formData.collegeId.trim())
+            newErrors.collegeId = "College ID is required";
+        if (!formData.department.trim())
+            newErrors.department = "Department is required";
         if (!formData.assessmentType) newErrors.assessmentType = "Select an assessment type";
         return newErrors;
     };
@@ -149,6 +155,24 @@ function StudentInfoPage() {
                             onChange={handleChange("collegeName")}
                             error={!!errors.collegeName}
                             helperText={errors.collegeName}
+                            sx={{ mb: 2 }}
+                        />
+                        <TextField
+                            label="College ID"
+                            fullWidth
+                            value={formData.collegeId}
+                            onChange={handleChange("collegeId")}
+                            error={!!errors.collegeId}
+                            helperText={errors.collegeId}
+                            sx={{ mb: 2 }}
+                        />
+                        <TextField
+                            label="Department"
+                            fullWidth
+                            value={formData.department}
+                            onChange={handleChange("department")}
+                            error={!!errors.department}
+                            helperText={errors.department}
                             sx={{ mb: 2 }}
                         />
                         <FormControl component="fieldset" sx={{ mb: 3 }} error={!!errors.assessmentType}>
