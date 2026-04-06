@@ -51,7 +51,7 @@ function StudentInfoPage() {
         if (!formData.collegeId.trim())
             newErrors.collegeId = "College ID is required";
         if (!formData.department.trim())
-            newErrors.department = "Department is required";
+            newErrors.department = "department or degree is required";
         if (!formData.assessmentType) newErrors.assessmentType = "Select an assessment type";
         return newErrors;
     };
@@ -167,7 +167,7 @@ function StudentInfoPage() {
                             sx={{ mb: 2 }}
                         />
                         <TextField
-                            label="Department"
+                            label="department/Degree"
                             fullWidth
                             value={formData.department}
                             onChange={handleChange("department")}
@@ -175,6 +175,7 @@ function StudentInfoPage() {
                             helperText={errors.department}
                             sx={{ mb: 2 }}
                         />
+            
                         <FormControl component="fieldset" sx={{ mb: 3 }} error={!!errors.assessmentType}>
                             <FormLabel component="legend">Select Assessment Type</FormLabel>
                             <RadioGroup
