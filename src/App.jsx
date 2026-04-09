@@ -1,10 +1,15 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import theme from "./theme";
 import StudentInfoPage from "./pages/StudentInfoPage";
 import QuizPage from "./pages/QuizPage";
 import ResultPage from "./pages/ResultPage";
 import AlreadySubmittedPage from "./pages/AlreadySubmittedPage";
+import AdminLoginPage from "./pages/admin/LoginPage";
+import DashboardPage from "./pages/admin/DashboardPage";
+import QuestionsPage from "./pages/admin/QuestionsPage";
+import SubmissionsPage from "./pages/admin/SubmissionsPage";
+import SettingsPage from "./pages/admin/SettingsPage";
 
 function App() {
   return (
@@ -16,6 +21,12 @@ function App() {
           <Route path="/quiz" element={<QuizPage />} />
           <Route path="/result" element={<ResultPage />} />
           <Route path="/already-submitted" element={<AlreadySubmittedPage />} />
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin/dashboard" element={<DashboardPage />} />
+          <Route path="/admin/questions" element={<QuestionsPage />} />
+          <Route path="/admin/submissions" element={<SubmissionsPage />} />
+          <Route path="/admin/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

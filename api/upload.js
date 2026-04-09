@@ -1,3 +1,4 @@
+/* eslint-env node */
 import { BlobServiceClient } from '@azure/storage-blob';
 
 export default async function handler(req, res) {
