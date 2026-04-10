@@ -28,6 +28,7 @@ function StudentInfoPage() {
         department: "",
         assessmentType: "gen-ai",
     });
+    const [assessmentTypes, setAssessmentTypes] = useState([]);
     const [errors, setErrors] = useState({});
     const [quizOpen, setQuizOpen] = useState(true);
     const [timeLimitMinutes, setTimeLimitMinutes] = useState(5);
@@ -44,19 +45,31 @@ function StudentInfoPage() {
     useEffect(() => {
         async function loadConfig() {
             try {
-                const response = await fetch("/api/quiz/config");
-                if (!response.ok) {
-                    throw new Error(`Failed to load quiz configuration: ${response.status}`);
+                const [configResponse, typesResponse] = await Promise.all([
+                    fetch("/api/quiz/config"),
+                    fetch("/api/admin/assessment-types")
+                ]);
+
+                if (!configResponse.ok) {
+                    throw new Error(`Failed to load quiz configuration: ${configResponse.status}`);
                 }
-                const payload = await response.json();
-                setQuizOpen(payload.settings?.quizOpen !== false);
-                setTimeLimitMinutes(Number(payload.settings?.timeLimitMinutes) || 5);
+
+                const configPayload = await configResponse.json();
+                const typesPayload = await typesResponse.json();
+
+                setQuizOpen(configPayload.settings?.quizOpen !== false);
+                setTimeLimitMinutes(Number(configPayload.settings?.timeLimitMinutes) || 5);
+                setAssessmentTypes(typesPayload.assessmentTypes || []);
             } catch (error) {
                 console.error("Config load error:", error);
                 setConfigError("Unable to load quiz settings. Please refresh the page.");
                 // Set defaults to allow the quiz to work
                 setQuizOpen(true);
                 setTimeLimitMinutes(5);
+                setAssessmentTypes([
+                    { id: "cybersecurity", name: "Cybersecurity" },
+                    { id: "gen-ai", name: "Generative AI" }
+                ]);
             } finally {
                 setQuizSettingsLoaded(true);
             }
@@ -96,8 +109,11 @@ function StudentInfoPage() {
             return;
         }
         // Store student info and selected assessment type in sessionStorage for use in quiz and results
+        const selectedType = assessmentTypes.find(t => t.id === formData.assessmentType);
+        const assessmentName = selectedType ? selectedType.name : formData.assessmentType;
         sessionStorage.setItem("qh_student_info", JSON.stringify(formData));
         sessionStorage.setItem("qh_assessment_type", formData.assessmentType);
+        sessionStorage.setItem("qh_assessment_name", assessmentName);
         const startTime = Date.now();
         const timeLimitMs = timeLimitMinutes * 60 * 1000;
         sessionStorage.setItem("qh_quiz_end_time", (startTime + timeLimitMs).toString());
@@ -231,16 +247,14 @@ function StudentInfoPage() {
                                 value={formData.assessmentType}
                                 onChange={(e) => setFormData((prev) => ({ ...prev, assessmentType: e.target.value }))}
                             >
-                                <FormControlLabel
-                                    value="gen-ai"
-                                    control={<Radio />}
-                                    label="Generative AI aptitude"
-                                />
-                                <FormControlLabel
-                                    value="cybersecurity"
-                                    control={<Radio />}
-                                    label="Cybersecurity aptitude"
-                                />
+                                {assessmentTypes.map((type) => (
+                                    <FormControlLabel
+                                        key={type.id}
+                                        value={type.id}
+                                        control={<Radio />}
+                                        label={`${type.name} aptitude`}
+                                    />
+                                ))}
                             </RadioGroup>
                             {errors.assessmentType && (
                                 <Typography variant="caption" color="error.main">

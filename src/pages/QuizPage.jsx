@@ -54,7 +54,7 @@ function QuizPage() {
             }
 
             const storedType = sessionStorage.getItem("qh_assessment_type");
-            const selectedType = storedType === "gen-ai" ? "gen-ai" : "cybersecurity";
+            const selectedType = storedType || "cybersecurity";
             setAssessmentType(selectedType);
 
             try {
@@ -158,9 +158,11 @@ function QuizPage() {
             const score = results.filter((r) => r.isCorrect).length;
             const studentInfo = JSON.parse(sessionStorage.getItem("qh_student_info") || "{}");
             const submittedAt = new Date().toISOString();
+            const assessmentName = sessionStorage.getItem("qh_assessment_name") || assessmentType;
             const quizResults = {
                 studentInfo,
                 assessmentType,
+                assessmentName,
                 results,
                 score,
                 totalQuestions: questions.length,

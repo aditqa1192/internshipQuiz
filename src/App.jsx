@@ -10,6 +10,7 @@ import DashboardPage from "./pages/admin/DashboardPage";
 import QuestionsPage from "./pages/admin/QuestionsPage";
 import SubmissionsPage from "./pages/admin/SubmissionsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
+import AdminGuard from "./components/AdminGuard";
 
 function App() {
   return (
@@ -22,10 +23,10 @@ function App() {
           <Route path="/result" element={<ResultPage />} />
           <Route path="/already-submitted" element={<AlreadySubmittedPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
-          <Route path="/admin/dashboard" element={<DashboardPage />} />
-          <Route path="/admin/questions" element={<QuestionsPage />} />
-          <Route path="/admin/submissions" element={<SubmissionsPage />} />
-          <Route path="/admin/settings" element={<SettingsPage />} />
+          <Route path="/admin/dashboard" element={<AdminGuard><DashboardPage /></AdminGuard>} />
+          <Route path="/admin/questions" element={<AdminGuard><QuestionsPage /></AdminGuard>} />
+          <Route path="/admin/submissions" element={<AdminGuard><SubmissionsPage /></AdminGuard>} />
+          <Route path="/admin/settings" element={<AdminGuard><SettingsPage /></AdminGuard>} />
           <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
         </Routes>
       </BrowserRouter>

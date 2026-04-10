@@ -1,4 +1,18 @@
 {
+  "assessmentTypes": [
+    {
+      "id": "cybersecurity",
+      "name": "Cybersecurity"
+    },
+    {
+      "id": "gen-ai",
+      "name": "Generative AI"
+    },
+    {
+      "id": "Sales and Marketing",
+      "name": "Sales and Marketing"
+    }
+  ],
   "questions": [
     {
       "id": 1,
@@ -483,6 +497,22 @@
       "type": "multiple",
       "assessmentType": "gen-ai",
       "enabled": true
+    },
+    {
+      "id": 116,
+      "question": "what is organic content",
+      "options": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "correctAnswers": [
+        1
+      ],
+      "type": "single",
+      "assessmentType": "Sales and Marketing",
+      "enabled": true
     }
   ],
   "submissions": [
@@ -778,10 +808,49 @@
       "percentage": 0,
       "submittedAt": "2026-04-09T17:59:20.775Z",
       "pdfUrl": null
+    },
+    {
+      "id": 2,
+      "studentInfo": {
+        "name": "test",
+        "email": "tes@t.com",
+        "collegeName": "t",
+        "collegeId": "rf",
+        "department": "fd",
+        "assessmentType": "Sales and Marketing"
+      },
+      "assessmentType": "Sales and Marketing",
+      "results": [
+        {
+          "id": 116,
+          "question": "what is organic content",
+          "options": [
+            "a",
+            "b",
+            "c",
+            "d"
+          ],
+          "correctAnswers": [
+            1
+          ],
+          "type": "single",
+          "assessmentType": "Sales and Marketing",
+          "enabled": true,
+          "studentAnswer": [
+            3
+          ],
+          "isCorrect": false
+        }
+      ],
+      "score": 0,
+      "totalQuestions": 1,
+      "percentage": 0,
+      "submittedAt": "2026-04-10T15:37:31.477Z",
+      "pdfUrl": null
     }
   ],
   "settings": {
-    "quizOpen": false,
+    "quizOpen": true,
     "timeLimitMinutes": 5,
     "oneAttempt": true,
     "assessmentTypes": [

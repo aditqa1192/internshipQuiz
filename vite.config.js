@@ -64,6 +64,8 @@ export default defineConfig(({ mode }) => {
                   handler = (await import('./api/admin/auth.js')).default;
                 } else if (req.url.startsWith('/api/admin/questions')) {
                   handler = (await import('./api/admin/questions.js')).default;
+                } else if (req.url.startsWith('/api/admin/assessment-types')) {
+                  handler = (await import('./api/admin/assessment-types.js')).default;
                 } else if (req.url.startsWith('/api/admin/submissions')) {
                   handler = (await import('./api/admin/submissions.js')).default;
                 } else if (req.url.startsWith('/api/admin/dashboard')) {

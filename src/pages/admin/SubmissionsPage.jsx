@@ -1,25 +1,43 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import AdminLayout from "../../components/AdminLayout";
 import { adminFetch } from "../../utils/adminApi";
 
 function SubmissionsPage() {
+  const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
+  const [assessmentTypes, setAssessmentTypes] = useState([]);
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadSubmissions() {
+    async function loadData() {
       try {
-        const response = await adminFetch("/api/admin/submissions");
-        const payload = await response.json();
-        setSubmissions(payload.submissions || []);
+        setLoading(true);
+        const [submissionsResponse, typesResponse] = await Promise.all([
+          adminFetch("/api/admin/submissions"),
+          adminFetch("/api/admin/assessment-types")
+        ]);
+        const submissionsData = await submissionsResponse.json();
+        const typesData = await typesResponse.json();
+        setSubmissions(submissionsData.submissions || []);
+        setAssessmentTypes(typesData.assessmentTypes || []);
+        setError("");
       } catch (err) {
-        setError(err.message);
+        if (err.message === "Unauthorized") {
+          // Token is invalid, redirect to login
+          navigate("/admin/login", { replace: true });
+        } else {
+          setError(err.message);
+        }
+      } finally {
+        setLoading(false);
       }
     }
-    loadSubmissions();
-  }, []);
+    loadData();
+  }, [navigate]);
 
   const openSubmission = (submission) => {
     setSelected(submission);
@@ -29,16 +47,27 @@ function SubmissionsPage() {
     setSelected(null);
   };
 
+  const getAssessmentName = (id) => {
+    const type = assessmentTypes.find(t => t.id === id);
+    return type ? type.name : id;
+  };
+
   return (
     <AdminLayout title="Submissions">
-      {error && (
-        <Typography color="error.main" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <Typography>Loading submissions...</Typography>
+        </Box>
+      ) : (
+        <>
+          {error && (
+            <Typography color="error.main" sx={{ mb: 2 }}>
+              {error}
+            </Typography>
+          )}
 
-      <Paper sx={{ border: "1px solid", borderColor: "divider" }}>
-        <TableContainer>
+          <Paper sx={{ border: "1px solid", borderColor: "divider" }}>
+            <TableContainer>
           <Table>
             <TableHead>
               <TableRow>
@@ -57,7 +86,7 @@ function SubmissionsPage() {
                   <TableCell>{submission.studentInfo.name}</TableCell>
                   <TableCell>{submission.studentInfo.email}</TableCell>
                   <TableCell>{submission.studentInfo.collegeName}</TableCell>
-                  <TableCell>{submission.assessmentType}</TableCell>
+                  <TableCell>{getAssessmentName(submission.assessmentType)}</TableCell>
                   <TableCell>
                     {submission.score}/{submission.totalQuestions} ({submission.percentage}%)
                   </TableCell>
@@ -80,6 +109,8 @@ function SubmissionsPage() {
           </Table>
         </TableContainer>
       </Paper>
+      </>
+      )}
 
       <Dialog open={Boolean(selected)} onClose={closeDialog} maxWidth="md" fullWidth>
         <DialogTitle>Submission details</DialogTitle>
@@ -96,7 +127,7 @@ function SubmissionsPage() {
                 College: {selected.studentInfo.collegeName} ({selected.studentInfo.collegeId})
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Assessment: {selected.assessmentType}
+                Assessment: {getAssessmentName(selected.assessmentType)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Submitted: {new Date(selected.submittedAt).toLocaleString()}

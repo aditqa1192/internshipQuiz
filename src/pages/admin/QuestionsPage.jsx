@@ -17,9 +17,12 @@ const DEFAULT_NEW_QUESTION = {
 
 function QuestionsPage() {
   const [questions, setQuestions] = useState([]);
+  const [assessmentTypes, setAssessmentTypes] = useState([]);
   const [filterType, setFilterType] = useState("cybersecurity");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState(DEFAULT_NEW_QUESTION);
+  const [newType, setNewType] = useState({ id: "", name: "" });
   const [isEditMode, setIsEditMode] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,16 +32,21 @@ function QuestionsPage() {
   );
 
   useEffect(() => {
-    async function loadQuestions() {
+    async function loadData() {
       try {
-        const response = await adminFetch("/api/admin/questions");
-        const data = await response.json();
-        setQuestions(data.questions || []);
+        const [questionsResponse, typesResponse] = await Promise.all([
+          adminFetch("/api/admin/questions"),
+          adminFetch("/api/admin/assessment-types")
+        ]);
+        const questionsData = await questionsResponse.json();
+        const typesData = await typesResponse.json();
+        setQuestions(questionsData.questions || []);
+        setAssessmentTypes(typesData.assessmentTypes || []);
       } catch (err) {
         setError(err.message);
       }
     }
-    loadQuestions();
+    loadData();
   }, []);
 
   const openNewQuestion = () => {
@@ -131,16 +139,61 @@ function QuestionsPage() {
     }
   };
 
+  const openAddType = () => {
+    setNewType({ id: "", name: "" });
+    setTypeDialogOpen(true);
+  };
+
+  const handleTypeChange = (field, value) => {
+    setNewType((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleTypeClose = () => {
+    setTypeDialogOpen(false);
+    setNewType({ id: "", name: "" });
+  };
+
+  const submitType = async () => {
+    if (!newType.id.trim() || !newType.name.trim()) {
+      setError("Both ID and name are required.");
+      return;
+    }
+
+    try {
+      const response = await adminFetch("/api/admin/assessment-types", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newType),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || "Unable to add assessment type.");
+      }
+      setAssessmentTypes((prev) => [...prev, payload.assessmentType]);
+      setTypeDialogOpen(false);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   return (
     <AdminLayout title="Questions">
       <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 2, mb: 3 }}>
         <Select value={filterType} onChange={(event) => setFilterType(event.target.value)} sx={{ minWidth: 220 }}>
-          <MenuItem value="cybersecurity">Cybersecurity</MenuItem>
-          <MenuItem value="gen-ai">Generative AI</MenuItem>
+          {assessmentTypes.map((type) => (
+            <MenuItem key={type.id} value={type.id}>
+              {type.name}
+            </MenuItem>
+          ))}
         </Select>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openNewQuestion}>
-          Add Question
-        </Button>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button variant="outlined" onClick={openAddType}>
+            Add Heading
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openNewQuestion}>
+            Add Question
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -219,8 +272,11 @@ function QuestionsPage() {
                 onChange={(e) => handleChange("assessmentType", e.target.value)}
                 sx={{ minWidth: 200 }}
               >
-                <MenuItem value="cybersecurity">Cybersecurity</MenuItem>
-                <MenuItem value="gen-ai">Generative AI</MenuItem>
+                {assessmentTypes.map((type) => (
+                  <MenuItem key={type.id} value={type.id}>
+                    {type.name}
+                  </MenuItem>
+                ))}
               </Select>
               <FormControlLabel
                 control={
@@ -254,6 +310,34 @@ function QuestionsPage() {
           <Button onClick={handleClose}>Cancel</Button>
           <Button variant="contained" onClick={submitQuestion}>
             {isEditMode ? "Save changes" : "Create question"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={typeDialogOpen} onClose={handleTypeClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Assessment Heading</DialogTitle>
+        <DialogContent>
+          <Box sx={{ py: 1 }}>
+            <TextField
+              label="Heading ID (e.g., machine-learning)"
+              value={newType.id}
+              onChange={(e) => handleTypeChange("id", e.target.value)}
+              fullWidth
+              sx={{ mb: 2 }}
+              helperText="Use lowercase with hyphens, no spaces"
+            />
+            <TextField
+              label="Display Name (e.g., Machine Learning)"
+              value={newType.name}
+              onChange={(e) => handleTypeChange("name", e.target.value)}
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleTypeClose}>Cancel</Button>
+          <Button variant="contained" onClick={submitType}>
+            Add Heading
           </Button>
         </DialogActions>
       </Dialog>
