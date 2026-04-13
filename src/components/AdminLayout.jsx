@@ -43,9 +43,6 @@ function AdminLayout({ title, children }) {
               <Typography variant="h5" fontWeight={700} gutterBottom>
                 {title || "Admin"}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {location.pathname.replace("/admin/", "").replace("-", " ") || "Overview"}
-              </Typography>
             </Box>
           </Box>
 

@@ -128,7 +128,7 @@ function StudentInfoPage() {
     };
 
     return (
-        <Layout>
+        <Layout showAdminButton={true}>
             <Box
                 sx={{
                     flex: 1,
