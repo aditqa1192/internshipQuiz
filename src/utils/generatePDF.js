@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export function generatePDF(quizData) {
-    const { studentInfo, results, score, totalQuestions, submittedAt } = quizData;
+    const { studentInfo, assessmentName, results, score, totalQuestions, submittedAt } = quizData;
     const percentage = ((score / totalQuestions) * 100).toFixed(1);
     const doc = new jsPDF();
 
@@ -48,6 +48,8 @@ export function generatePDF(quizData) {
     doc.text(`College ID: ${studentInfo.collegeId}`, margin, yPos);
     yPos += 6;
     doc.text(`department/Degree: ${studentInfo.department}`, margin, yPos);
+    yPos += 6;
+    doc.text(`Assessment Type: ${assessmentName || "N/A"}`, margin, yPos);
 
     // --- Score Summary ---
     yPos += 12;

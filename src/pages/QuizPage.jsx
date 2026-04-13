@@ -19,15 +19,13 @@ import {
     DialogActions,
     CircularProgress,
     Backdrop,
+    Alert,
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import Layout from "../components/Layout";
-import questionsCyberSecurity from "../data/questions";
-import questionsGenAI from "../data/questions_old";
 import { generatePDF } from "../utils/generatePDF";
 
 const STORAGE_KEY = "qh_quiz_submitted";
-const TIME_LIMIT_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 function QuizPage() {
     const navigate = useNavigate();
@@ -38,42 +36,71 @@ function QuizPage() {
     const [assessmentType, setAssessmentType] = useState("cybersecurity");
     const [remainingTime, setRemainingTime] = useState(5 * 60);
     const [timerExpired, setTimerExpired] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
     useEffect(() => {
-        // Check if already submitted
-        if (localStorage.getItem(STORAGE_KEY) === "true") {
-            navigate("/already-submitted", { replace: true });
-            return;
+        async function initializeQuiz() {
+            // Check if already submitted
+            if (localStorage.getItem(STORAGE_KEY) === "true") {
+                navigate("/already-submitted", { replace: true });
+                return;
+            }
+
+            // Check if student info exists
+            const studentInfo = sessionStorage.getItem("qh_student_info");
+            if (!studentInfo) {
+                navigate("/", { replace: true });
+                return;
+            }
+
+            const storedType = sessionStorage.getItem("qh_assessment_type");
+            const selectedType = storedType || "cybersecurity";
+            setAssessmentType(selectedType);
+
+            try {
+                const [questionRes, configRes] = await Promise.all([
+                    fetch(`/api/quiz/questions?assessmentType=${selectedType}`),
+                    fetch("/api/quiz/config"),
+                ]);
+
+                if (!questionRes.ok) {
+                    throw new Error(`Failed to load quiz questions: ${questionRes.status}`);
+                }
+                if (!configRes.ok) {
+                    throw new Error(`Failed to load quiz settings: ${configRes.status}`);
+                }
+
+                const questionData = await questionRes.json();
+                const configData = await configRes.json();
+
+                setQuestions(questionData.questions || []);
+                const configuredLimit = Number(configData.settings?.timeLimitMinutes) || 5;
+                const updatedTimeLimit = configuredLimit * 60 * 1000;
+
+                const now = Date.now();
+                const storedEndTime = parseInt(sessionStorage.getItem("qh_quiz_end_time"), 10);
+                let quizEndTime = storedEndTime;
+
+                if (!storedEndTime || Number.isNaN(storedEndTime) || storedEndTime <= now) {
+                    quizEndTime = now + updatedTimeLimit;
+                    sessionStorage.setItem("qh_quiz_end_time", quizEndTime.toString());
+                }
+
+                const secondsLeft = Math.max(0, Math.ceil((quizEndTime - now) / 1000));
+                setRemainingTime(secondsLeft);
+
+                if (quizEndTime <= now) {
+                    setTimerExpired(true);
+                }
+            } catch (error) {
+                console.error("Quiz initialization error:", error);
+                setErrorMessage("Unable to load quiz. Please check your connection and try again.");
+                // Set fallback questions if available
+                setQuestions([]);
+            }
         }
 
-        // Check if student info exists
-        const studentInfo = sessionStorage.getItem("qh_student_info");
-        if (!studentInfo) {
-            navigate("/", { replace: true });
-            return;
-        }
-
-        // Check assessment type and set quiz questions
-        const storedType = sessionStorage.getItem("qh_assessment_type");
-        const selectedType = storedType === "gen-ai" ? "gen-ai" : "cybersecurity";
-        setAssessmentType(selectedType);
-        setQuestions(selectedType === "gen-ai" ? questionsGenAI : questionsCyberSecurity);
-
-        const now = Date.now();
-        const storedEndTime = parseInt(sessionStorage.getItem("qh_quiz_end_time"), 10);
-        let quizEndTime = storedEndTime;
-
-        if (!storedEndTime || Number.isNaN(storedEndTime) || storedEndTime <= now) {
-            quizEndTime = now + TIME_LIMIT_MS;
-            sessionStorage.setItem("qh_quiz_end_time", quizEndTime.toString());
-        }
-
-        const secondsLeft = Math.max(0, Math.ceil((quizEndTime - now) / 1000));
-        setRemainingTime(secondsLeft);
-
-        if (quizEndTime <= now) {
-            setTimerExpired(true);
-        }
+        initializeQuiz();
     }, [navigate]);
 
     useEffect(() => {
@@ -131,9 +158,11 @@ function QuizPage() {
             const score = results.filter((r) => r.isCorrect).length;
             const studentInfo = JSON.parse(sessionStorage.getItem("qh_student_info") || "{}");
             const submittedAt = new Date().toISOString();
+            const assessmentName = sessionStorage.getItem("qh_assessment_name") || assessmentType;
             const quizResults = {
                 studentInfo,
                 assessmentType,
+                assessmentName,
                 results,
                 score,
                 totalQuestions: questions.length,
@@ -146,15 +175,19 @@ function QuizPage() {
             );
             const fileName = `QuanHack_Assessment_${studentInfo.name.replace(/\s+/g, "_")}_${studentInfo.collegeName.replace(/\s+/g, "_")}.pdf`;
 
-            const response = await fetch("/api/upload", {
+            const response = await fetch("/api/quiz/submit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fileName, pdfBase64: base64String }),
+                body: JSON.stringify({
+                    ...quizResults,
+                    pdfBase64: base64String,
+                    fileName,
+                }),
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || "Upload failed");
+                throw new Error(errorData.message || "Submission failed");
             }
 
             sessionStorage.setItem("qh_quiz_results", JSON.stringify(quizResults));
@@ -212,6 +245,11 @@ function QuizPage() {
 
     return (
         <Layout>
+            {errorMessage ? (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                    {errorMessage}
+                </Alert>
+            ) : null}
             {/* Progress Bar */}
             <Paper
                 elevation={0}

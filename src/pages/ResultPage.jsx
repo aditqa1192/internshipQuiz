@@ -30,7 +30,7 @@ function ResultPage() {
 
     if (!quizData) return null;
 
-    const { studentInfo, assessmentType, results, score, totalQuestions, submittedAt } = quizData;
+    const { studentInfo, assessmentType, assessmentName, results, score, totalQuestions, submittedAt } = quizData;
     const percentage = ((score / totalQuestions) * 100).toFixed(1);
 
     const getScoreColor = () => {
@@ -70,7 +70,7 @@ function ResultPage() {
                     {studentInfo.collegeName}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Assessment type: {assessmentType === "gen-ai" ? "Generative AI" : "Cybersecurity"}
+                    Assessment type: {assessmentName || assessmentType}
                 </Typography>
 
                 <Box
