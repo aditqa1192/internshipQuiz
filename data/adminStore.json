@@ -497,22 +497,6 @@
       "type": "multiple",
       "assessmentType": "gen-ai",
       "enabled": true
-    },
-    {
-      "id": 116,
-      "question": "what is organic content",
-      "options": [
-        "a",
-        "b",
-        "c",
-        "d"
-      ],
-      "correctAnswers": [
-        1
-      ],
-      "type": "single",
-      "assessmentType": "Sales and Marketing",
-      "enabled": true
     }
   ],
   "submissions": [
