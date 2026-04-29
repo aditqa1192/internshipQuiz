@@ -497,6 +497,22 @@
       "type": "multiple",
       "assessmentType": "gen-ai",
       "enabled": true
+    },
+    {
+      "id": 116,
+      "question": "test",
+      "options": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "correctAnswers": [
+        1
+      ],
+      "type": "single",
+      "assessmentType": "Sales and Marketing",
+      "enabled": true
     }
   ],
   "submissions": [

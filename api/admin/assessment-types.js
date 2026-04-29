@@ -1,64 +1,61 @@
-import { readStore, writeStore } from "../_store.js";
-import { requireAdminToken } from "./helpers.js";
+import pool from '../db.js';
+import { requireAdminToken } from './helpers.js';
 
 export default async function handler(req, res) {
-  const store = await readStore();
-  const { assessmentTypes = [] } = store;
+  const client = await pool.connect();
 
-  if (req.method === "GET") {
-    return res.status(200).json({ assessmentTypes });
+  try {
+    if (req.method === 'GET') {
+      const result = await client.query('SELECT * FROM assessment_types ORDER BY id');
+      return res.status(200).json({ assessmentTypes: result.rows });
+    }
+
+    // Require admin token for write operations
+    if (!requireAdminToken(req, res)) return;
+
+    if (req.method === 'POST') {
+      const newType = req.body;
+      if (!newType || !newType.id || !newType.name) {
+        return res.status(400).json({ message: 'Invalid assessment type payload' });
+      }
+
+      // Check if id already exists
+      const existing = await client.query('SELECT id FROM assessment_types WHERE id = $1', [newType.id]);
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ message: 'Assessment type ID already exists' });
+      }
+
+      const result = await client.query(
+        'INSERT INTO assessment_types (id, name) VALUES ($1, $2) RETURNING *',
+        [newType.id, newType.name]
+      );
+
+      return res.status(201).json({ assessmentType: result.rows[0] });
+    }
+
+    if (req.method === 'PUT') {
+      const updatedType = req.body;
+      if (!updatedType || !updatedType.id) {
+        return res.status(400).json({ message: 'Invalid assessment type payload' });
+      }
+
+      const result = await client.query(
+        'UPDATE assessment_types SET name = $1 WHERE id = $2 RETURNING *',
+        [updatedType.name, updatedType.id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'Assessment type not found' });
+      }
+
+      return res.status(200).json({ assessmentType: result.rows[0] });
+    }
+
+    return res.status(405).json({ message: 'Method not allowed' });
+  } catch (error) {
+    console.error('Database error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    client.release();
   }
-
-  // Require admin token for write operations
-  if (!requireAdminToken(req, res)) return;
-
-  if (req.method === "POST") {
-    const newType = req.body;
-    if (!newType || !newType.id || !newType.name) {
-      return res.status(400).json({ message: "Invalid assessment type payload" });
-    }
-
-    // Check if id already exists
-    if (assessmentTypes.some(type => type.id === newType.id)) {
-      return res.status(400).json({ message: "Assessment type ID already exists" });
-    }
-
-    const updatedStore = {
-      ...store,
-      assessmentTypes: [...assessmentTypes, newType],
-    };
-
-    await writeStore(updatedStore);
-    return res.status(201).json({ assessmentType: newType });
-  }
-
-  if (req.method === "PUT") {
-    const updatedType = req.body;
-    if (!updatedType || !updatedType.id) {
-      return res.status(400).json({ message: "Invalid assessment type payload" });
-    }
-
-    const typeIndex = assessmentTypes.findIndex((type) => type.id === updatedType.id);
-    if (typeIndex === -1) {
-      return res.status(404).json({ message: "Assessment type not found" });
-    }
-
-    assessmentTypes[typeIndex] = { ...assessmentTypes[typeIndex], ...updatedType };
-
-    await writeStore({ ...store, assessmentTypes });
-    return res.status(200).json({ assessmentType: assessmentTypes[typeIndex] });
-  }
-
-  if (req.method === "DELETE") {
-    const { id } = req.query;
-    if (!id) {
-      return res.status(400).json({ message: "Invalid assessment type id" });
-    }
-
-    const remainingTypes = assessmentTypes.filter((type) => type.id !== id);
-    await writeStore({ ...store, assessmentTypes: remainingTypes });
-    return res.status(200).json({ message: "Assessment type deleted" });
-  }
-
-  return res.status(405).json({ message: "Method not allowed" });
 }
